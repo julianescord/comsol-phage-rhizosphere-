@@ -1,0 +1,25 @@
+# --- Secretos: NUNCA versionar ---------------------------------------
+.env
+*.key
+
+# --- Entornos virtuales de Python ------------------------------------
+venv/
+mcp_server/venv/
+__pycache__/
+*.py[cod]
+
+# --- Artefactos generados por COMSOL ---------------------------------
+# Los modelos .mph y sus salidas son REPRODUCIBLES a partir de scripts/.
+# La fuente de verdad es el codigo, no el binario.
+#   models/etapa1_difusion_pura.mph  <- scripts/build_etapa1.py
+#   models/etapa1_validacion.{csv,png} <- scripts/validate_etapa1.py
+models/*
+!models/.gitkeep
+
+# Corridas batch de prueba y sus recovery/status
+test_batch/
+*.mph.recovery
+*.mph.status
+
+# --- Configuracion local del IDE / Claude Code -----------------------
+.claude/settings.local.json
