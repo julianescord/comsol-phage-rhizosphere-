@@ -1,0 +1,14 @@
+{
+  // El interprete con `mph`, numpy y scipy es el de mcp_server/, NO el venv/
+  // de la raiz ni el Python del sistema. Sin esto, el analizador marca
+  // "Cannot find module mph/numpy/scipy" en todo scripts/.
+  "python.defaultInterpreterPath": "${workspaceFolder}/mcp_server/venv/bin/python",
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}/mcp_server/venv/lib/python3.12/site-packages",
+    "${workspaceFolder}/mcp_server"
+  ],
+  "python.terminal.activateEnvironment": true,
+  "files.exclude": {
+    "**/__pycache__": true
+  }
+}

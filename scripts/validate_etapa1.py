@@ -20,13 +20,14 @@ de la solucion FEM.
 Uso:
     ./mcp_server/venv/bin/python scripts/validate_etapa1.py
 """
+import os
 import sys
 
 import numpy as np
-from scipy.special import erf
-from scipy.integrate import quad
-
 import mph
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from analytic import crank_sphere, selfcheck            # noqa: E402
 
 MPH = "/home/julianescord/Documentos/COMSOL/models/etapa1_difusion_pura.mph"
 SOLVED = "/home/julianescord/Documentos/COMSOL/models/etapa1_difusion_pura_solved.mph"
@@ -34,42 +35,12 @@ OUT_CSV = "/home/julianescord/Documentos/COMSOL/models/etapa1_validacion.csv"
 OUT_PNG = "/home/julianescord/Documentos/COMSOL/models/etapa1_validacion.png"
 
 
-def crank_sphere(r, t, a, D, c0=1.0):
-    """c(r,t) para una esfera con c0 uniforme liberando en medio infinito."""
-    r = np.atleast_1d(np.asarray(r, float)).copy()
-    r[r < 1e-15] = 1e-15                      # evita la singularidad 1/r
-    s = 2.0 * np.sqrt(D * t)
-    return c0 * (
-        0.5 * (erf((a - r) / s) + erf((a + r) / s))
-        - np.sqrt(D * t) / (r * np.sqrt(np.pi))
-        * (np.exp(-((a - r) ** 2) / (4 * D * t))
-           - np.exp(-((a + r) ** 2) / (4 * D * t)))
-    )
-
-
-def selfcheck(a, D):
-    """La referencia debe conservar la masa inicial c0*(4/3)pi a^3."""
-    M0 = 4.0 / 3.0 * np.pi * a ** 3
-    print("--- autoverificacion de la solucion analitica ---")
-    ok = True
-    for t in (60.0, 3600.0, 86400.0):
-        M, _ = quad(lambda r: 4 * np.pi * r ** 2 * crank_sphere(r, t, a, D)[0],
-                    1e-12, a + 12 * np.sqrt(D * t), limit=400)
-        err = M / M0 - 1
-        ok &= abs(err) < 1e-3
-        print(f"  t={t:8.0f} s   masa/masa0 - 1 = {err:+.3e}")
-    print(f"  autoverificacion: {'OK' if ok else 'FALLO'}\n")
-    return ok
-
-
 def main():
     client = mph.start(cores=1)
     model = client.load(MPH)
     java = model.java
 
-    par = {k: v for k, v in model.parameters().items()}
-    a = model.evaluate("r_bead") if False else None   # se lee via java abajo
-    # Evaluar los parametros a numero en unidades SI:
+    # Parametros evaluados a numero en unidades SI:
     a = float(java.param().evaluate("r_bead"))
     D = float(java.param().evaluate("D_phage"))
     c0 = float(java.param().evaluate("c0"))
