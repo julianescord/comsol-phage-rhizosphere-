@@ -55,6 +55,7 @@ lo detecta automáticamente vía JPype.
 | 3 | Captación radicular saturable (sumidero Michaelis-Menten) | ✅ verificada |
 | R | **Replicación del fago: infección fago–Ralstonia (Lotka-Volterra)** | ✅ verificada |
 | 4 | Flujo de agua y advección (campo uniforme impuesto) | ✅ verificada (con salvedad geométrica) |
+| F+R | **Combinado: flujo + replicación (2 interfaces acopladas)** | ✅ verificada |
 | 5 | 3D, múltiples beads, heterogeneidad, calibración | pendiente |
 
 > **Reordenamiento:** la captación radicular (Etapa 4 en el plan original) se
@@ -378,6 +379,49 @@ cierra a ~1 % (offset de CI). El resultado físico es contundente:
 casi todo muere antes de llegar; con flujo modesto (Pe ≳ 5) la mayoría llega
 viva. Esto relaja la restricción de la Etapa 3 (la bead ya no tiene que estar
 sub-milimétricamente pegada a la raíz si hay flujo que transporte el fago).
+
+### Modelo combinado (flujo + replicación) — reproducir
+
+```bash
+mcp_server/venv/bin/python scripts/build_flujo_replicacion.py
+mcp_server/venv/bin/python scripts/validate_flujo_replicacion.py
+mcp_server/venv/bin/python scripts/sweep_flujo_replicacion.py
+mcp_server/venv/bin/python scripts/plot_flujo_replicacion.py
+```
+
+Cruza los dos hallazgos principales: la **replicación** (que favorece la
+liberación sostenida) y el **flujo de agua** (que rescata al fago del tránsito).
+Pregunta: ¿el flujo cambia la conclusión sobre la liberación sostenida?
+
+**Detalle técnico — dos interfaces TDS.** El fago (cP) es móvil y se advecta;
+*Ralstonia* (cH) es sésil y **no** debe advectarse (con Pe~20 el flujo la
+barrería decenas de mm en 21 d). Como en TDS la velocidad es por interfaz, se
+usan dos interfaces acopladas por las reacciones cruzadas Lotka-Volterra: `tds`
+(fago, con advección) y `tds2` (*Ralstonia*, sésil). Verificado: el invariante
+Mprod = b·Hinf cierra a 1.5e-15 y el límite Pe→0 reproduce la etapa de
+replicación (dif 1.3 %).
+
+#### Resultado: el flujo refuerza —no invierte— la liberación sostenida
+
+Barrido Pe × r_bead, carga acumulada de *Ralstonia* (menos = mejor):
+
+| Pe \\ r_bead | 25 µm | 75 µm | 150 µm | 300 µm |
+|---|---|---|---|---|
+| 0 (sin flujo) | 115 % | 96 % | 86 % | **75 %** |
+| 5 | 85 % | 74 % | 68 % | **61 %** |
+| 20 | 101 % | 90 % | 77 % | **57 %** |
+
+Tres lecturas:
+
+1. **La bead grande (300 µm, liberación sostenida) gana con cualquier flujo** —
+   la conclusión de la etapa de replicación no se invierte, se refuerza.
+2. **El flujo mejora el biocontrol**, pero con matiz: para la bead grande es
+   monótono (75→61→57 %); para beads pequeñas hay un óptimo — Pe = 5 es mejor
+   que Pe = 20.
+3. **Flujo excesivo puede ser contraproducente** para liberación rápida: con
+   bead pequeña + Pe alto, el flujo barre el fago fuera del dominio antes de que
+   amplifique. La liberación sostenida es más robusta al flujo porque repone el
+   fago barrido. Hay **sinergia bead-grande + flujo**.
 
 ### Nota sobre la escala del vehículo
 
