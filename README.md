@@ -53,6 +53,7 @@ lo detecta automáticamente vía JPype.
 | 1 | Difusión pura en suelo homogéneo, validada vs. solución analítica | ✅ validada |
 | 2 | D_bead ≠ D_suelo, porosidad real (Millington-Quirk), inactivación | ✅ verificada |
 | 3 | Captación radicular saturable (sumidero Michaelis-Menten) | ✅ verificada |
+| R | **Replicación del fago: infección fago–Ralstonia (Lotka-Volterra)** | ✅ verificada |
 | 4 | Flujo de agua no saturado (Richards) y advección | pendiente |
 | 5 | 3D, múltiples beads, heterogeneidad, calibración | pendiente |
 
@@ -60,7 +61,26 @@ lo detecta automáticamente vía JPype.
 > adelantó a la 3ª posición, y el flujo de agua pasó a la 4ª. Motivo: el
 > barrido de la Etapa 2 mostró que sin un sumidero que premie la
 > sostenibilidad la entrega es monótona; la raíz es el proceso que puede crear
-> ese óptimo, así que es la pregunta prioritaria.
+> ese óptimo, así que es la pregunta prioritaria. Luego se saltó a la
+> **replicación** (etapa R), el aporte de novedad del proyecto y lo único que
+> podía invertir la conclusión monótona — y lo hace.
+
+## Hallazgo central del proyecto (hasta ahora)
+
+Con el fago como agente **pasivo** (difunde, se inactiva, es captado — Etapas
+2 y 3), el diseño óptimo del vehículo es siempre el mismo: **lo más pequeño y
+difusivo posible**, cerca de la raíz. La entrega es monótona, no hay argumento
+de modelado para beads grandes de liberación sostenida.
+
+Cuando el fago **se replica** al infectar a *Ralstonia* (etapa R), la
+recomendación **se invierte**: la métrica biológicamente relevante — la carga
+acumulada de patógeno en el tiempo — favorece la **liberación sostenida**
+(beads grandes, gel de difusión lenta). El mecanismo es un ciclo
+depredador-presa con retardo: un pulso rápido de fago aplasta a *Ralstonia*
+una vez y se agota, tras lo cual el patógeno rebrota; la liberación sostenida
+mantiene la presión del fago sobre ese rebrote. Esto da, por primera vez en el
+proyecto, un argumento cuantitativo a favor de las micro-beads de liberación
+sostenida.
 
 ### Etapa 1 — reproducir
 
@@ -237,8 +257,70 @@ captación radicular saturable como procesos, el vehículo óptimo es el más
 pequeño y difusivo posible, colocado a menos de ~1 longitud de penetración de
 la raíz. No hay ningún argumento de modelado para beads grandes de liberación
 sostenida. Si tal argumento existe, tendría que venir de un proceso aún no
-incluido — replicación del fago (Etapa 5), degradación programada de la bead,
-o una ventana de protección larga con reinfección por *Ralstonia*.
+incluido — replicación del fago, degradación programada de la bead, o una
+ventana de protección larga con reinfección por *Ralstonia*. **La etapa R
+prueba justamente la primera vía.**
+
+### Etapa R (replicación) — reproducir
+
+```bash
+mcp_server/venv/bin/python scripts/build_replicacion.py     # modelo 2 especies
+mcp_server/venv/bin/python scripts/validate_replicacion.py  # Checks A/B/C
+mcp_server/venv/bin/python scripts/sweep_replicacion.py     # barrido
+mcp_server/venv/bin/python scripts/plot_replicacion.py      # figura
+```
+
+El fago deja de ser pasivo: se **amplifica** al infectar a *Ralstonia*. Modelo
+depredador-presa espacial (reacción-difusión de 2 especies, `cP` = fago,
+`cH` = *Ralstonia*), cinética Lotka-Volterra en pore volume:
+
+```
+R_cP = +b·k_inf·cP·cH − k_inact·cP
+R_cH = +r_host·cH·(1 − cH/Kcap) − k_inf·cP·cH
+```
+
+*Ralstonia* (sésil) coloniza una banda rizosférica cerca de L en su capacidad
+de carga; el fago se libera desde la bead y debe llegar y amplificarse.
+Número reproductivo básico R₀ ≈ b·k_inf·H₀/k_inact ≈ 4.3 con los placeholders.
+
+#### Verificación (validate_replicacion.py)
+
+Sistema acoplado no lineal, sin solución cerrada. Tres comprobaciones
+independientes:
+
+| Check | Qué compara | Resultado |
+|---|---|---|
+| A — vs ODE | caso bien mezclado vs ODE Lotka-Volterra (scipy) | error 1e-3 tras apretar `rtol` |
+| B — invariante | Mprod = b·Hinf (cada lisis produce b fagos) | 1.5e-15 (exacto) |
+| B — balance fago | M(t) = M(0) + Mprod − Minact | 1.3e-7 |
+| C — límite H₀→0 | sin hospedador ⇒ M(t) = M(0)·e^(−k·t) | 1.0e-3 |
+
+Detalle numérico revelado por el Check A: el sistema es **stiff y amplifica
+~170×**, así que la tolerancia por defecto del solver (~1e-3) se propaga a ~1 %
+en el pico. Al apretar `rtol` a 1e-6 el FEM converge a la ODE — confirmando que
+la discrepancia era el solver, no el modelo. El build de producción usa
+`rtol = 1e-4`.
+
+#### Hallazgo: la métrica importa, y la robusta favorece la sostenibilidad
+
+El barrido reveló que el sistema es un **ciclo depredador-presa con retardo**:
+*Ralstonia* crece, el fago la aplasta, el patógeno **rebrota**. Por eso la
+supervivencia en un instante fijo es **frágil** (captura una fase del ciclo).
+La métrica robusta y biológicamente relevante es la **carga acumulada de
+patógeno** ∫H(t)/H₀ dt.
+
+| Métrica | Óptimo | Lectura |
+|---|---|---|
+| Carga acumulada (robusta) | r_bead = 300 µm, gel lento | **liberación sostenida** |
+| Supervivencia final (frágil) | r_bead = 75 µm (óptimo interior) | depende de la fase |
+| Mínimo alcanzado | r_bead = 300 µm | liberación sostenida |
+
+Dos de tres métricas —incluida la robusta— favorecen **beads grandes de
+liberación lenta**. Esto **invierte** la conclusión de las Etapas 2–3. Nota de
+honestidad: la conclusión depende de la métrica temporal elegida, y con estos
+placeholders el biocontrol es solo parcial (la carga baja a ~72 %, no se
+erradica). Lo robusto es la **dirección**: la replicación da valor a la
+sostenibilidad que el transporte pasivo no daba.
 
 ### Nota sobre la escala del vehículo
 
