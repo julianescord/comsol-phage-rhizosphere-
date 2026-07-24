@@ -52,9 +52,15 @@ lo detecta automáticamente vía JPype.
 |---|---|---|
 | 1 | Difusión pura en suelo homogéneo, validada vs. solución analítica | ✅ validada |
 | 2 | D_bead ≠ D_suelo, porosidad real (Millington-Quirk), inactivación | ✅ verificada |
-| 3 | Flujo de agua no saturado (Richards) y advección | pendiente |
-| 4 | Sumidero radicular (captación) | pendiente |
+| 3 | Captación radicular saturable (sumidero Michaelis-Menten) | ✅ verificada |
+| 4 | Flujo de agua no saturado (Richards) y advección | pendiente |
 | 5 | 3D, múltiples beads, heterogeneidad, calibración | pendiente |
+
+> **Reordenamiento:** la captación radicular (Etapa 4 en el plan original) se
+> adelantó a la 3ª posición, y el flujo de agua pasó a la 4ª. Motivo: el
+> barrido de la Etapa 2 mostró que sin un sumidero que premie la
+> sostenibilidad la entrega es monótona; la raíz es el proceso que puede crear
+> ese óptimo, así que es la pregunta prioritaria.
 
 ### Etapa 1 — reproducir
 
@@ -148,6 +154,91 @@ premiaría una liberación sostenida solo aparece cuando se añade un proceso qu
 la aproveche — captación radicular (Etapa 4) o replicación con umbral
 (Etapa 5). Hasta entonces, el diseño óptimo es el vehículo más pequeño y
 difusivo posible.
+
+### Etapa 3 (raíz) — reproducir
+
+```bash
+mcp_server/venv/bin/python scripts/build_raiz.py       # modelo con raíz
+mcp_server/venv/bin/python scripts/validate_raiz.py    # balance de masa
+mcp_server/venv/bin/python scripts/sweep_raiz.py       # barrido
+mcp_server/venv/bin/python scripts/plot_raiz.py        # figura
+```
+
+Añade una **captación radicular saturable** (Michaelis-Menten) como sumidero
+en la frontera exterior, a distancia L de la bead:
+
+```
+J_root = -Vmax_root · c / (Km_root + c)      [mol/(m²·s)]
+```
+
+Saturable a propósito: es el mecanismo candidato para romper la monotonía de
+la Etapa 2. Un pulso rápido satura la captación (c ≫ Km) y el exceso se
+inactiva; un flujo sostenido se mantiene cerca de Km y la raíz lo capta con
+eficiencia. `r_dom` deja de ser "medio infinito" y pasa a ser **L, la
+distancia bead–raíz**, un parámetro físico. La frontera exterior se aísla con
+una `Difference` de dos selecciones `Ball`.
+
+#### Verificación por balance de masa de 4 términos
+
+Esta geometría (bead esférica + sumidero MM en la frontera) no tiene solución
+analítica cerrada. Se verifica con un invariante exacto — en todo instante,
+`M₀ = activo(t) + captado(t) + inactivado(t)`. Las masas acumuladas
+(captada e inactivada) se integran **dentro de COMSOL** con dos ODEs globales
+(`GlobalEquations`), no por trapecio post-hoc, así que el solver las cierra a
+alta precisión.
+
+| Comprobación | Resultado |
+|---|---|
+| Deriva del balance (caso base y límite) | 2.1e-5 relativo a la dosis |
+| Límite Vmax→0 (debe reproducir la Etapa 2) | captado 0.000 % |
+| Offset de CI (artefacto, ver abajo) | −2.2 % |
+
+Dos hallazgos de la verificación:
+
+- **Bug encontrado por el balance.** El nodo `FluxBoundary` trae `species = 0`
+  por defecto y sin `species = 1` **la BC no se aplica a la especie** — el
+  sumidero no removía masa. Se detectó porque el balance daba lo imposible:
+  `inactivado` alcanzaba toda la dosis y *además* había masa captada.
+- **Offset de condición inicial.** La CI discontinua (c₀ en la bead, 0 fuera)
+  se proyecta sobre la malla y el solver la suaviza, así que la dosis
+  realmente cargada es `M_active(0) ≈ 0.978·M₀`. Es un artefacto de malla, no
+  de física; todas las fracciones se refieren a la dosis real cargada.
+
+#### Longitud de penetración: la bead debe estar cerca de la raíz
+
+El fago difunde hacia la raíz mientras se inactiva. La escala natural es la
+**longitud de penetración** √(D_suelo/k_inact) ≈ **0.36 mm** (con los
+placeholders actuales). La fracción captada colapsa cuando L la supera:
+
+| L [mm] | 0.3 | 0.5 | 1.0 | 2.0 | 5.0 |
+|---|---|---|---|---|---|
+| f captada | 51 % | 46 % | 31 % | 9 % | 0.09 % |
+
+Implicación de diseño: **la bead tiene que estar sub-milimétricamente cerca de
+la superficie radicular** para que el fago llegue vivo. Por eso el barrido del
+óptimo se corre a L = 0.5 mm, no a los 5 mm del caso base.
+
+#### ¿La raíz crea el óptimo interior? — No
+
+El barrido r_bead × D_bead a L = 0.5 mm con captación saturable
+(`raiz_barrido.png`) responde la pregunta que motivó adelantar esta etapa: la
+fracción captada por la raíz **sigue siendo monótona**, con el máximo en la
+esquina (bead más pequeña y difusiva, 87 %). La captación saturable **no**
+rompe la monotonía de la Etapa 2.
+
+La razón: la ventaja de liberar rápido (el fago escapa de la bead antes de
+inactivarse dentro) domina sobre la penalización por saturación de la
+captación. Un pulso rápido satura la raíz y desperdicia algo, pero ese
+desperdicio es menor que la pérdida por inactivación intra-bead de una
+liberación lenta.
+
+**Conclusión de diseño acumulada (Etapas 2 + 3):** con inactivación y
+captación radicular saturable como procesos, el vehículo óptimo es el más
+pequeño y difusivo posible, colocado a menos de ~1 longitud de penetración de
+la raíz. No hay ningún argumento de modelado para beads grandes de liberación
+sostenida. Si tal argumento existe, tendría que venir de un proceso aún no
+incluido — replicación del fago (Etapa 5), degradación programada de la bead,
+o una ventana de protección larga con reinfección por *Ralstonia*.
 
 ### Nota sobre la escala del vehículo
 
