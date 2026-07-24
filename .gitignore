@@ -23,3 +23,6 @@ test_batch/
 
 # --- Configuracion local del IDE / Claude Code -----------------------
 .claude/settings.local.json
+
+# Crash logs de la JVM (COMSOL/JPype)
+hs_err_pid*.log

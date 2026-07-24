@@ -54,7 +54,7 @@ lo detecta automáticamente vía JPype.
 | 2 | D_bead ≠ D_suelo, porosidad real (Millington-Quirk), inactivación | ✅ verificada |
 | 3 | Captación radicular saturable (sumidero Michaelis-Menten) | ✅ verificada |
 | R | **Replicación del fago: infección fago–Ralstonia (Lotka-Volterra)** | ✅ verificada |
-| 4 | Flujo de agua no saturado (Richards) y advección | pendiente |
+| 4 | Flujo de agua y advección (campo uniforme impuesto) | ✅ verificada (con salvedad geométrica) |
 | 5 | 3D, múltiples beads, heterogeneidad, calibración | pendiente |
 
 > **Reordenamiento:** la captación radicular (Etapa 4 en el plan original) se
@@ -321,6 +321,63 @@ honestidad: la conclusión depende de la métrica temporal elegida, y con estos
 placeholders el biocontrol es solo parcial (la carga baja a ~72 %, no se
 erradica). Lo robusto es la **dirección**: la replicación da valor a la
 sostenibilidad que el transporte pasivo no daba.
+
+### Etapa 4 (flujo de agua) — reproducir
+
+```bash
+mcp_server/venv/bin/python scripts/build_flujo.py       # modelo con advección
+mcp_server/venv/bin/python scripts/validate_flujo.py    # Checks A/B/C
+mcp_server/venv/bin/python scripts/sweep_flujo.py        # barrido de Péclet
+mcp_server/venv/bin/python scripts/plot_flujo.py         # figura
+```
+
+Añade **advección**: el agua del suelo arrastra el fago. La pregunta es si el
+flujo ayuda al fago a alcanzar la raíz antes de inactivarse (la longitud de
+penetración difusiva es solo ~0.36 mm, Etapa 3).
+
+#### Salvedad geométrica importante (por qué el flujo es *uniforme*)
+
+El plan original era resolver Darcy/Richards con **transpiración convergente**
+hacia la raíz. No fue posible de forma limpia, por una razón geométrica real —
+no un fallo de implementación:
+
+- Resolver Darcy con **recarga distribuida** rompía el balance de masa: la
+  fuente de fluido introduce un término espurio `c·∇·u` en la forma
+  conservativa del transporte.
+- Darcy por **gradiente de presión** daba Péclet ~10⁴ (geometría fina + suelo
+  permeable) con oscilaciones numéricas severas.
+- Un campo **convergente** hacia la raíz esférica envolvente es incompresible
+  *solo con una fuente en el centro* (el agua que converge debe originarse en
+  algún sitio); cualquier regularización de esa singularidad reintroduce
+  `∇·u ≠ 0` y vuelve a romper el balance.
+
+La "raíz esférica envolvente" heredada de las Etapas 2–3 —perfecta para
+difusión + reacción— es **incompatible con un flujo advectivo convergente
+limpio**. Se verificó numéricamente: el campo convergente regularizado explota
+el balance (Mout/M₀ ≈ 1000), mientras un flujo **uniforme** (∇·u = 0 exacto)
+lo cierra a &lt; 1 %.
+
+Por eso la Etapa 4 modela un **flujo de fondo uniforme** (riego/percolación que
+atraviesa la rizosfera), no transpiración convergente. Es un escenario distinto
+pero verificable. La transpiración convergente exigiría rediseñar la geometría
+con entrada y salida de agua en fronteras opuestas — trabajo futuro.
+
+#### Verificación y resultado
+
+Los tres checks (balance de masa, límite Pe→0, monotonía) pasan; el balance
+cierra a ~1 % (offset de CI). El resultado físico es contundente:
+
+| Pe | fago entregado vivo | inactivado |
+|---|---|---|
+| 0 (difusión pura) | 1 % | 100 % |
+| 5 | 80 % | 21 % |
+| 20 | 96 % | 5 % |
+| 80 | 99.5 % | 1.3 % |
+
+**El flujo de agua rescata al fago de la inactivación en tránsito.** Sin flujo
+casi todo muere antes de llegar; con flujo modesto (Pe ≳ 5) la mayoría llega
+viva. Esto relaja la restricción de la Etapa 3 (la bead ya no tiene que estar
+sub-milimétricamente pegada a la raíz si hay flujo que transporte el fago).
 
 ### Nota sobre la escala del vehículo
 
