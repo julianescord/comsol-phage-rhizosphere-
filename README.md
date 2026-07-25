@@ -22,15 +22,32 @@ referencia no contempla:
 ## Estructura
 
 ```
-docs/           Especificación técnica, plan de etapas, datos de fagos
-scripts/        Construcción y validación de modelos (fuente de verdad)
-models/         Artefactos .mph y salidas — NO versionados, se regeneran
-mcp_server/     Servidor MCP que expone COMSOL como herramientas
-Markdown/       Paper de referencia convertido a texto
+docs/             Especificación técnica (histórica), plan de etapas, datos de fagos
+docs/summary/     Informe final consolidado (resumen.html) — metodología + hallazgos
+scripts/          Construcción y validación de modelos (fuente de verdad)
+models/           Artefactos .mph y salidas — NO versionados, se regeneran
+mcp_server/       Servidor MCP que expone COMSOL como herramientas
+Markdown/         Paper de referencia convertido a texto
 ```
 
 Los archivos `.mph` **no se versionan**: son reproducibles ejecutando los
 scripts. El código es la fuente de verdad, no el binario.
+
+Dentro de `scripts/` hay dos categorías, reconocibles por el nombre:
+
+- **Pipeline de simulación** (`build_*`, `validate_*`, `sweep_*`, `plot_*`,
+  y el módulo compartido `analytic.py`) — construyen, verifican y barren los
+  modelos COMSOL. Requieren `mcp_server/venv` (con `mph`).
+- **Herramientas de reporte vía IA externa** (`analisis_datos_deepseek.py`,
+  `analisis_nano.py`) — no simulan nada; leen resultados ya generados y le
+  piden a un modelo de lenguaje (Llama 3.1 70B vía API de NVIDIA) que
+  redacte texto/HTML a partir de ellos. Ver detalle abajo.
+
+Algunos documentos de `docs/` (`especificacion_tecnica.md`,
+`ruta_aprendizaje.md`, `conexion.md`) son **material histórico**: reflejan el
+plan o las opciones consideradas *antes* de construir el modelo, no lo que
+efectivamente se hizo. Cada uno tiene una nota al inicio señalando esto y
+apuntando a la fuente vigente.
 
 ## Entorno
 
@@ -432,9 +449,47 @@ solo aporta información cuando se rompe la auto-similitud — es decir, en la
 Etapa 2 en adelante: D_bead ≠ D_suelo, una distancia fija a la raíz, o una
 constante de inactivación fija.
 
+## Herramientas de reporte vía IA externa
+
+Dos scripts usan la API de NVIDIA (Llama 3.1 70B) para **redactar texto** a
+partir de datos que ya existen. Ninguno ejecuta COMSOL ni resuelve física —
+es importante no confundirlos con el pipeline de simulación de arriba.
+
+```bash
+venv/bin/python scripts/analisis_datos_deepseek.py   # reporte HTML global desde models/*.csv
+venv/bin/python scripts/analisis_nano.py             # sección "escala nano" (analítica, no FEM)
+```
+
+- **`analisis_datos_deepseek.py`** — concatena todos los CSV de `models/` y le
+  pide a Llama que redacte un reporte HTML completo (metodología + análisis
+  por etapa + discusión), insertando `<img src="archivo.png">` cuando existe
+  el PNG correspondiente. Pensado para una primera pasada rápida y barata;
+  para el informe final con la narrativa completa (por qué se reordenaron las
+  etapas, qué bugs se encontraron y cómo, qué métrica es frágil y cuál
+  robusta) se usó en cambio `docs/summary/resumen.html`, escrito directamente
+  con el contexto de todo el proyecto — un LLM viendo solo los CSV no tiene
+  forma de reconstruir ese razonamiento.
+- **`analisis_nano.py`** — la escala nanométrica del vehículo (~100 nm)
+  **nunca se simuló en COMSOL** (ver nota en `docs/summary/resumen.html`,
+  tabla de variables de entrada): es física y numéricamente trivial
+  (tiempo característico a²/D ~ milisegundos) y el vehículo no cabría al
+  fago jumbo. Este script calcula esos tiempos analíticamente y le pide a
+  Llama que redacte la sección de discusión correspondiente
+  (`models/analisis_nano.html`, no versionado).
+
+Ambos requieren `deepseekk_api_key` en `.env` (ver abajo) y el paquete
+`openai` (cliente genérico, apuntando al endpoint de NVIDIA). Usan el
+`venv/` de la **raíz** (no `mcp_server/venv`): no necesitan `mph` ni COMSOL,
+pero sí `openai`+`python-dotenv`, que viven ahí.
+
+```bash
+venv/bin/pip install openai python-dotenv   # si el venv raiz no los tiene aun
+```
+
 ## Configuración local
 
-`.env` (no versionado) contiene la clave de API usada por `ai_planner.py`:
+`.env` (no versionado) contiene la clave de API usada por los scripts de
+reporte de la sección anterior:
 
 ```
 deepseekk_api_key=...

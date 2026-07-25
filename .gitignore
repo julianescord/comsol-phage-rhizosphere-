@@ -26,3 +26,11 @@ test_batch/
 
 # Crash logs de la JVM (COMSOL/JPype)
 hs_err_pid*.log
+
+# --- Copias derivadas por herramientas externas (doc2md, etc.) -------
+# Conversion automatica de un HTML/informe a Markdown, generada por una
+# herramienta externa al repo (no un script propio). Se regenera bajo
+# demanda a partir de la fuente real (docs/summary/resumen.html); no se
+# versiona para que no quede desincronizada en silencio.
+docs/summary/Markdown/
+Markdown/analisis_nano.md

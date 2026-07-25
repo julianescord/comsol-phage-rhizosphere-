@@ -160,4 +160,10 @@ Con esta arquitectura, la IA puede:
 
 # Estado actual
 
-Actualmente **no existe un servidor MCP oficial para COMSOL** conocido públicamente. Sin embargo, Antigravity IDE permite integrar servidores MCP personalizados, por lo que es completamente viable desarrollar uno utilizando la API de COMSOL o scripts de automatización.
+> **Documento histórico — la opción recomendada ya se construyó.** Este
+> documento es la exploración de opciones *antes* de decidir; la Opción 2
+> (servidor MCP personalizado) es la que se implementó, en `mcp_server/`
+> (Python + el paquete `mph`, sin necesidad de MATLAB/LiveLink). Para el
+> estado real y cómo usarlo, ver `mcp_server/README.md` y `README.md`.
+
+Al momento de escribir esto no existía un servidor MCP oficial para COMSOL conocido públicamente. Sin embargo, Antigravity IDE permite integrar servidores MCP personalizados, por lo que era viable desarrollar uno utilizando la API de COMSOL o scripts de automatización — y así se hizo.

@@ -1,5 +1,13 @@
 # Ruta de aprendizaje: habilidades para el modelo de liberación controlada en rizosfera
 
+> **Documento histórico.** Escrito antes de construir el primer modelo. La
+> vía de construcción real terminó siendo **programática en Python + `mph`**
+> (ver `README.md` y `scripts/`), no LiveLink for MATLAB — el bloque 5 de
+> abajo describe una ruta que no se tomó y su script de referencia
+> (`build_rhizosphere_model.m`) ya no está en el repo. El contenido de fondo
+> (bloques 1–4: transporte en medios porosos, cinética, captación radicular,
+> manejo de COMSOL) sigue siendo válido como lectura de base.
+
 Organizado por competencia. Cada bloque indica qué necesitas saber hacer (no solo saber), y por qué importa para este modelo específico.
 
 ## 1. Transporte de masa y medios porosos (base física)
@@ -45,7 +53,7 @@ Organizado por competencia. Cada bloque indica qué necesitas saber hacer (no so
 **Qué debes poder hacer:** automatizar la construcción del modelo o barridos paramétricos vía LiveLink for MATLAB.
 
 - Manual "LiveLink for MATLAB User's Guide" (incluido en la documentación de COMSOL una vez instalado).
-- Ya te dejé un esqueleto de script en `../scripts/build_rhizosphere_model.m` como punto de partida.
+- (Superado) Hubo un esqueleto `.m` de LiveLink como punto de partida; se descartó a favor de `scripts/build_etapa1.py` y siguientes, vía el paquete `mph`.
 
 **Por qué importa aquí:** no es imprescindible para un primer modelo, pero se vuelve valioso en la Etapa 5 (calibración/optimización, barridos de parámetros de suelo o de mecanismo de liberación).
 

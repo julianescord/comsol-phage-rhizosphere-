@@ -1,5 +1,14 @@
 # Especificación técnica: Modelo FEM de liberación controlada en la rizosfera
 
+> **Documento histórico — el plan de etapas de la sección 8 no es el que se
+> ejecutó.** Es la especificación *inicial*, escrita antes de construir nada,
+> y se conserva porque documenta el razonamiento de partida (adaptación de
+> Dosmar et al.). El plan real se reordenó y ganó dos etapas que este
+> documento no contempla (captación radicular saturable adelantada, y sobre
+> todo la **replicación del fago**, el aporte de novedad del proyecto). Para
+> el plan y los resultados reales, ver **`README.md`** — sección "Plan de
+> etapas" — y la carpeta `scripts/` (fuente de verdad ejecutable).
+
 Adaptado de la metodología de Dosmar et al. (2021), *"Compartmental and COMSOL Multiphysics 3D Modeling of Drug Diffusion to the Vitreous Following the Administration of a Sustained-Release Drug Delivery System"*, Pharmaceutics 13(11):1862 (`../pharmaceutics-13-01862.pdf`).
 
 Ese paper resuelve un problema estructuralmente idéntico al nuestro: un dispositivo de liberación sostenida (hidrogel) libera un fármaco hacia tejidos en capas, hasta alcanzar un compartimento objetivo (el vítreo). Nosotros reemplazamos "tejido ocular en capas" por "suelo/rizosfera" y "vítreo" por "superficie radicular". El método COMSOL que usan —**Transport of Diluted Species in Porous Media**, estudio *Time-Dependent*, geometría axisimétrica generada por revolución de planos de trabajo 2D— es directamente reutilizable.
