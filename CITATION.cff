@@ -1,0 +1,30 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the paper by Dosmar et al. (2021) and this repository as specified below."
+title: "FEM model of controlled phage release in the rhizosphere"
+version: "1.0.0"
+date-released: "2026-07-30"
+license: "MIT"
+repository-code: "https://github.com/JuliAnOrs/comsol"
+keywords:
+  - COMSOL
+  - finite element method
+  - phage therapy
+  - rhizosphere
+  - Ralstonia solanacearum
+  - controlled release
+  - reaction-diffusion
+  - Lotka-Volterra
+authors:
+  - family-names: "Ordoñez"
+    given-names: "Julián E."
+    orcid: "https://orcid.org/0000-0000-0000-0000"
+preferred-citation:
+  type: software
+  title: "FEM model of controlled phage release in the rhizosphere"
+  version: "1.0.0"
+  year: 2026
+  publisher: GitHub
+  authors:
+    - family-names: "Ordoñez"
+      given-names: "Julián E."
+  license: MIT
